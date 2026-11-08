@@ -183,6 +183,18 @@ class KeywordTests(unittest.TestCase):
             with self.subTest(word=word):
                 self.assertEqual(word in hub_guard.KEYWORDS_UNDERSTOOD, not reading(sample).unread)
 
+    def test_the_time_keyword_options_are_read_to_the_program_it_times(self) -> None:
+        for command in (
+            "time -p git checkout main",
+            "time -- git checkout main",
+            "time -p -- git checkout main",
+            "! time -p -- git checkout main",
+        ):
+            with self.subTest(command=command):
+                read = reading(command)
+                self.assertEqual([], read.unread)
+                self.assertEqual(["checkout"], [call.subcommand for call in read.calls])
+
     def test_the_constructs_the_grammar_reads_without_a_word_are_not_read(self) -> None:
         for entry, command in (
             ("construct function definition", "f() { :; }"),

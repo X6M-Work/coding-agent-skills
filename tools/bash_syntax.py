@@ -335,7 +335,15 @@ class Lexer:
             self.redirecting = False
             return
         after_time = bool(self.tokens) and isinstance(self.tokens[-1], Word) and self.tokens[-1].literal == "time"
-        opens = word.literal in COMMAND_OPENERS or (after_time and word.literal == "-p")
+        after_time_p = (
+            len(self.tokens) >= 2
+            and isinstance(self.tokens[-1], Word)
+            and self.tokens[-1].literal == "-p"
+            and isinstance(self.tokens[-2], Word)
+            and self.tokens[-2].literal == "time"
+        )
+        time_option = (after_time and word.literal in ("-p", "--")) or (after_time_p and word.literal == "--")
+        opens = word.literal in COMMAND_OPENERS or time_option
         started, reserved, naming = self.command_start, self.reserved, self.naming_function
         self.reserved = self.redirections_only = naming or (reserved and opens)
         self.command_start = self.reserved or (started and word.assignment is not None)
@@ -800,9 +808,13 @@ class Parser:
         while self.at_reserved("!", "time"):
             word = self.advance()
             negated ^= isinstance(word, Word) and word.literal == "!"
-            token = self.peek()
-            if isinstance(token, Word) and token.literal == "-p":
-                self.index += 1
+            if isinstance(word, Word) and word.literal == "time":
+                token = self.peek()
+                if isinstance(token, Word) and token.literal == "-p":
+                    self.index += 1
+                    token = self.peek()
+                if isinstance(token, Word) and token.literal == "--":
+                    self.index += 1
         result = Pipeline([self.command()], negated)
         while self.at_operator("|", "|&"):
             self.index += 1
